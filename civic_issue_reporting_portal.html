@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Civic Issue Reporting Portal</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header><div class="bar">
+<a class="logo" href="#home"><svg viewBox="0 0 40 40" aria-hidden="true"><rect width="40" height="40" rx="10" fill="#0f9d9a"/><path d="M20 7a9 9 0 0 0-9 9c0 7 9 17 9 17s9-10 9-17a9 9 0 0 0-9-9zm0 12a3 3 0 1 1 0-6 3 3 0 0 1 0 6z" fill="#fff"/></svg>Civic Issue Reporting Portal</a>
+<button class="ib" id="menu" aria-label="Toggle menu" aria-expanded="false">☰</button>
+<nav id="nav"><a href="#home" data-r="home">Home</a><a href="#report" data-r="report">Report an Issue</a><a href="#track" data-r="track">Track Complaint</a><a href="#all" data-r="all">All Complaints</a><a href="#targets" data-r="targets">Targets &amp; About</a><button class="ib" id="theme" aria-label="Toggle light or dark theme">◐</button></nav>
+</div></header>
+<main id="app"></main>
+<footer>Prototype demonstration. Data stays in this browser only. <a href="#" id="reset" style="color:var(--teal)">Reset demo data</a></footer>
+<div id="toast" class="toast hide" role="status"></div>
+<script>
+const CATS={"Pothole":["🕳️",168,"7 days"],"Leaking Pipeline":["💧",48,"48 hours"],"Broken Street Light":["💡",72,"3 days"],"Waterlogging":["🌧️",24,"24 hours"],"Garbage Overflow":["🗑️",48,"48 hours"],"Other Civic Issue":["📌",120,"5 days"]};
+const STAGES=["Submitted","Acknowledged","In Progress","Resolved"];
+const NOTES={"Submitted":"Complaint registered.","Acknowledged":"Complaint reviewed and acknowledged.","In Progress":"Assigned team has started work.","Resolved":"Issue marked as fixed."};
+const KEY="civicPortalV1",H=3600000;
+let S=load();
+function load(){try{const s=JSON.parse(localStorage.getItem(KEY));if(s&&s.c)return s}catch(e){}return seed()}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){toast("Storage full: photo or data could not be saved.")}}
+function mk(n,t,cat,w,lm,d,ago,st,sup){const c=Date.now()-ago*H,h=[];STAGES.slice(0,st+1).forEach((s,i)=>h.push({status:s,time:Math.min(c+i*Math.max(ago*H/(st+2),H/2),Date.now()-6e4),note:i?"Demo update: "+NOTES[s]:NOTES[s]}));h[0].time=c;return{id:"CIV-2026-"+n,title:t,cat,ward:w,landmark:lm,desc:d,photo:"",created:c,deadline:c+CATS[cat][1]*H,support:sup,history:h}}
+function seed(){const c=[mk(1041,"Deep pothole near bus stop","Pothole","12","Station Road bus stop","A large pothole is damaging two-wheelers during the morning rush.",60,1,18),
+mk(1042,"Water leaking from main pipe","Leaking Pipeline","7","Green Park Lane","Clean water has been gushing onto the road since last night.",30,2,31),
+mk(1043,"Street light not working","Broken Street Light","3","Temple Street junction","Three lights are out, making the junction unsafe after dark.",120,3,9),
+mk(1044,"Roads flooded after rain","Waterlogging","9","Market underpass","Knee-deep water blocks the underpass every time it rains.",40,0,44),
+mk(1045,"Garbage bin overflowing","Garbage Overflow","5","Near Lake View Park","Bins have not been cleared for days and the smell is spreading.",10,0,6),
+mk(1046,"Broken footpath tiles","Other Civic Issue","14","School Road","Loose tiles are a tripping hazard for children and elders.",20,1,12)];return{c,seq:1047,sup:[],theme:""}}
+const $=s=>document.querySelector(s),esc=s=>String(s).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));
+const st=c=>c.history[c.history.length-1].status,cls=s=>s.replace(" ","-");
+const fd=t=>new Date(t).toLocaleString([],{day:"numeric",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit"});
+function dur(ms){const m=Math.floor(Math.abs(ms)/6e4),d=Math.floor(m/1440),h=Math.floor(m%1440/60);return d?d+"d "+h+"h":h?h+"h "+(m%60)+"m":m+"m"}
+function od(c){return st(c)!=="Resolved"&&Date.now()>c.deadline}
+function rem(c){if(st(c)==="Resolved")return"Resolved "+fd(c.history[3].time);return od(c)?"Overdue by "+dur(Date.now()-c.deadline):dur(c.deadline-Date.now())+" remaining"}
+function badge(c){return'<span class="badge s-'+cls(st(c))+'">'+st(c)+'</span>'+(od(c)?' <span class="badge overdue">Overdue</span>':'')}
+function toast(m){const t=$("#toast");t.textContent=m;t.classList.remove("hide");clearTimeout(toast.t);toast.t=setTimeout(()=>t.classList.add("hide"),3000)}
+function card(c){const sup=S.sup.includes(c.id);return`<article class="card cc"><div class="meta">${CATS[c.cat][0]} ${c.cat} · <b>${c.id}</b></div><h3>${esc(c.title)}</h3><div class="meta">Ward ${esc(c.ward)} · ${esc(c.landmark)}</div><div class="meta">Reported ${new Date(c.created).toLocaleDateString()} · Due ${fd(c.deadline)}</div><div class="row"><span>${badge(c)}</span><span class="meta">${rem(c)}</span></div><div class="row"><span class="meta">👥 <b>${c.support}</b> support</span><span><button class="btn sm alt" onclick="supp('${c.id}')" ${sup?"disabled":""}>${sup?"Supported ✓":"I Face This Too"}</button> <a class="btn sm" href="#track/${c.id}">Track</a></span></div></article>`}
+function supp(id){if(S.sup.includes(id))return;const c=S.c.find(x=>x.id===id);c.support++;S.sup.push(id);save();toast("Thanks! Your support was added to "+id);const q=$("#q");if(q&&window.run)window.run();else route()}
+function stats(){const n=S.c.length,r=S.c.filter(c=>st(c)==="Resolved").length,p=S.c.filter(c=>st(c)==="In Progress").length;return[["Total",n],["Pending",n-r-p],["In Progress",p],["Resolved",r]]}
+const V={
+home(){const s=stats().map(([a,b])=>`<div class="card stat"><b>${b}</b><span>${a}</span></div>`).join("");
+return`<section class="hero"><h1>Report It. Track It. See It Fixed.</h1><p>Spotted a pothole, a leaking pipe or a broken street light? Report it in a minute, with no account needed, and follow it until it is resolved.</p><a class="btn" href="#report">Report an Issue</a> <a class="btn alt" href="#track">Track Complaint</a></section><div class="grid stats">${s}</div><h2>Recently Reported</h2><div class="grid cards">${[...S.c].sort((a,b)=>b.created-a.created).slice(0,3).map(card).join("")}</div><p><a class="btn alt" href="#all" style="color:var(--teal)">View all complaints</a></p>`+targetsTable()},
+report(){return`<h2>Report an Issue</h2><div class="note">No login required. Prototype: your complaint is saved only in this browser.</div><form id="f" class="card" novalidate><label for="cat">Issue category *</label><select id="cat"><option value="">Select a category</option>${Object.keys(CATS).map(k=>`<option>${k}</option>`).join("")}</select><div class="err" id="e-cat"></div><label for="title">Complaint title *</label><input id="title" maxlength="80" placeholder="e.g. Deep pothole near bus stop"><div class="err" id="e-title"></div><label for="desc">Detailed description *</label><textarea id="desc" rows="4" placeholder="Describe the problem (at least 15 characters)"></textarea><div class="err" id="e-desc"></div><div class="two"><div><label for="ward">Ward number *</label><input id="ward" inputmode="numeric" placeholder="e.g. 12"><div class="err" id="e-ward"></div></div><div><label for="lm">Street, area or landmark *</label><input id="lm" placeholder="e.g. Near City Mall"><div class="err" id="e-lm"></div></div></div><label for="ph">Photograph (optional)</label><input id="ph" type="file" accept="image/*"><div id="prev"></div><p class="meta" id="eta"></p><button class="btn" type="submit">Submit Complaint</button></form><div id="done"></div>`},
+track(id){return`<h2>Track a Complaint</h2><form id="tf" class="card"><label for="tid">Complaint ID</label><div style="display:flex;gap:8px;flex-wrap:wrap"><input id="tid" style="flex:1;min-width:200px" placeholder="CIV-2026-1041" value="${esc(id||"")}"><button class="btn" type="submit">Track</button></div></form><div id="tr"></div>`},
+all(){return`<h2>All Complaints</h2><div class="filters"><input id="q" type="search" aria-label="Search" placeholder="Search by ID, title or landmark"><select id="fc" aria-label="Category"><option value="">All categories</option>${Object.keys(CATS).map(k=>`<option>${k}</option>`).join("")}</select><select id="fs" aria-label="Status"><option value="">All statuses</option>${STAGES.map(k=>`<option>${k}</option>`).join("")}<option>Overdue</option></select></div><p class="meta" id="cnt"></p><div class="grid cards" id="list"></div>`},
+targets(){return`<h2>Target Resolution Times</h2>`+targetsTable()+`<h2>About this prototype &amp; future scope</h2><div class="card"><p><b>This is a frontend demonstration, not a real civic service.</b> Complaints are stored only in your browser (localStorage). They are not shared across citizens or devices and no government department is notified. Demo status updates are simulated and do not reflect real repair work.</p><p>Planned extensions:</p><ul><li>Shared backend and database</li><li>Municipal officer login and admin dashboard</li><li>Real status updates from authorised officers</li><li>GPS location and map integration</li><li>Email / SMS notifications</li><li>Secure complaint management and photo storage</li></ul></div>`}};
+function targetsTable(){return`<div class="card scroll"><table><thead><tr><th>Issue category</th><th>Target resolution time</th></tr></thead><tbody>${Object.entries(CATS).map(([k,v])=>`<tr><td>${v[0]} ${k}</td><td><b>${v[2]}</b></td></tr>`).join("")}</tbody></table><p class="meta">Targets are prototype defaults and are not guaranteed official municipal service levels.</p></div>`}
+function bindReport(){let photo="";const cat=$("#cat");cat.onchange=()=>{$("#eta").textContent=cat.value?"Target resolution: "+CATS[cat.value][2]+" from submission.":""};
+$("#ph").onchange=e=>{photo="";$("#prev").innerHTML="";const f=e.target.files[0];if(!f)return;if(!f.type.startsWith("image/")){toast("Please choose an image file.");e.target.value="";return}const r=new FileReader();r.onload=()=>{const im=new Image();im.onload=()=>{const k=Math.min(1,480/im.width),cv=document.createElement("canvas");cv.width=im.width*k;cv.height=im.height*k;cv.getContext("2d").drawImage(im,0,0,cv.width,cv.height);photo=cv.toDataURL("image/jpeg",.6);$("#prev").innerHTML='<img class="ph" alt="Preview" src="'+photo+'">'};im.src=r.result};r.readAsDataURL(f)};
+$("#f").onsubmit=e=>{e.preventDefault();const v={cat:cat.value,title:$("#title").value.trim(),desc:$("#desc").value.trim(),ward:$("#ward").value.trim(),lm:$("#lm").value.trim()},er={};
+if(!v.cat)er.cat="Please select an issue category.";if(v.title.length<5)er.title="Enter a title of at least 5 characters.";if(v.desc.length<15)er.desc="Enter a description of at least 15 characters.";if(!/^\d{1,3}$/.test(v.ward))er.ward="Enter a valid ward number (digits only).";if(v.lm.length<3)er.lm="Enter a street, area or landmark.";
+["cat","title","desc","ward","lm"].forEach(k=>{$("#e-"+k).textContent=er[k]||"";$("#"+(k==="lm"?"lm":k)).classList.toggle("bad",!!er[k])});
+const first=Object.keys(er)[0];if(first){$("#"+first).focus();return}
+const now=Date.now(),c={id:"CIV-2026-"+S.seq++,title:v.title,cat:v.cat,desc:v.desc,ward:v.ward,landmark:v.lm,photo,created:now,deadline:now+CATS[v.cat][1]*H,support:0,history:[{status:"Submitted",time:now,note:NOTES.Submitted}]};
+S.c.unshift(c);save();$("#f").classList.add("hide");$("#done").innerHTML=`<div class="ok" role="alert"><h3 style="margin-top:0">✅ Complaint submitted successfully</h3><div class="cid">${c.id}</div><p>Please save this ID to track your complaint.</p><p><b>Submitted:</b> ${fd(c.created)}<br><b>Expected resolution by:</b> ${fd(c.deadline)} (${CATS[c.cat][2]})</p><a class="btn" href="#track/${c.id}">Track this complaint now</a> <a class="btn alt" href="#report" onclick="setTimeout(route,0)">Report another</a></div>`;window.scrollTo(0,0)}}
+function showTrack(raw){const id=raw.trim().toUpperCase(),box=$("#tr"),c=S.c.find(x=>x.id===id);
+if(!id){box.innerHTML='<div class="note">Enter your complaint ID, for example CIV-2026-1041.</div>';return}
+if(!c){box.innerHTML=`<div class="card" role="alert" style="border-color:var(--bad)"><b style="color:var(--bad)">Complaint not found</b><p>We could not find "${esc(raw)}". IDs look like CIV-2026-1041. Check for typos, or browse <a href="#all" style="color:var(--teal)">all complaints</a>. Remember that this prototype only knows complaints saved in this browser.</p></div>`;return}
+const cur=STAGES.indexOf(st(c)),tl=STAGES.map((s,i)=>{const h=c.history.find(x=>x.status===s);return`<li class="${i<cur||(i===cur&&s==="Resolved")?"done":i===cur?"cur done":"up"}"><span class="dot">${i<=cur?"✓":i+1}</span><strong>${s}</strong><span class="meta">${h?fd(h.time)+" — "+esc(h.note):"Upcoming"}</span></li>`}).join("");
+const last=c.history[c.history.length-1];
+box.innerHTML=`<div class="card" style="margin-top:14px"><div class="meta">${CATS[c.cat][0]} ${c.cat}</div><div class="cid">${c.id}</div><h3>${esc(c.title)}</h3><p>${esc(c.desc)}</p>${c.photo?'<img class="ph" alt="Complaint photo" src="'+c.photo+'">':""}<p class="meta">Ward ${esc(c.ward)} · ${esc(c.landmark)}<br>Submitted: ${fd(c.created)}<br>Target deadline: ${fd(c.deadline)} (${CATS[c.cat][2]})<br>Time: <b>${rem(c)}</b></p><p>${badge(c)}</p><p><b>Latest update:</b> ${esc(last.note)} <span class="meta">(${fd(last.time)})</span></p></div>
+<div class="card" style="margin-top:14px"><h3 style="margin-top:0">Progress timeline</h3><ol class="tl">${tl}</ol><h3>Complete history</h3><ul class="hist">${[...c.history].reverse().map(h=>`<li><b>${h.status}</b> · ${fd(h.time)}<br><span class="meta">${esc(h.note)}</span></li>`).join("")}</ul></div>
+<div class="card" style="margin-top:14px;border:2px dashed var(--teal)"><h3 style="margin-top:0">🧪 Demo control: simulate a status update</h3><div class="note">Simulated for demonstration only. This does not represent real municipal repair activity.</div><label for="un">Update note (optional)</label><input id="un" placeholder="e.g. Crew dispatched"><p><button class="btn" id="adv" ${cur===3?"disabled":""}>${cur===3?"Already resolved":"Advance to "+STAGES[cur+1]}</button></p></div>`;
+const b=$("#adv");if(b&&cur<3)b.onclick=()=>{const n=STAGES[cur+1],note=$("#un").value.trim();c.history.push({status:n,time:Date.now(),note:"Demo update: "+(note||NOTES[n])});save();toast("Status updated to "+n);showTrack(c.id)}}
+function bindTrack(id){$("#tf").onsubmit=e=>{e.preventDefault();const v=$("#tid").value;history.replaceState(null,"","#track/"+encodeURIComponent(v.trim()));showTrack(v)};if(id)showTrack(id)}
+function bindAll(){const run=()=>{const q=$("#q").value.toLowerCase(),fc=$("#fc").value,fs=$("#fs").value;
+const r=S.c.filter(c=>(!q||(c.id+c.title+c.landmark).toLowerCase().includes(q))&&(!fc||c.cat===fc)&&(!fs||(fs==="Overdue"?od(c):st(c)===fs)));
+$("#cnt").textContent=r.length+" complaint"+(r.length===1?"":"s")+" found";$("#list").innerHTML=r.length?r.map(card).join(""):'<div class="card">No complaints match your search. Try different filters.</div>'};
+["q","fc","fs"].forEach(i=>$("#"+i).oninput=run);window.run=run;run()}
+function route(){const h=location.hash.slice(1)||"home",[r,...p]=h.split("/"),id=decodeURIComponent(p.join("/")),v=V[r]?r:"home";
+$("#app").innerHTML=V[v](id);document.querySelectorAll("nav a").forEach(a=>a.classList.toggle("on",a.dataset.r===v));$("#nav").classList.remove("open");$("#menu").setAttribute("aria-expanded","false");
+if(v==="report")bindReport();if(v==="track")bindTrack(id);if(v==="all")bindAll()}
+addEventListener("hashchange",()=>{route();window.scrollTo(0,0)});
+$("#menu").onclick=()=>{const o=$("#nav").classList.toggle("open");$("#menu").setAttribute("aria-expanded",o)};
+function theme(t){if(t)document.documentElement.dataset.theme=t}
+theme(S.theme);
+$("#theme").onclick=()=>{const d=document.documentElement,dark=d.dataset.theme?d.dataset.theme==="dark":matchMedia("(prefers-color-scheme:dark)").matches;S.theme=dark?"light":"dark";theme(S.theme);save()};
+$("#reset").onclick=e=>{e.preventDefault();if(confirm("Reset all demo complaints to the original samples?")){const t=S.theme;S=seed();S.theme=t;save();route();toast("Demo data reset")}};
+setInterval(()=>{if(/^#(home)?$/.test(location.hash)||location.hash.startsWith("#all")&&!document.activeElement.matches("input,select"))route()},60000);
+route();
+</script>
+</body>
+</html>
